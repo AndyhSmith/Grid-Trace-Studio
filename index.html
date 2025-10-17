@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Grid Trace Studio — Hi-Res</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--panel:rgba(255,255,255,.72);--ink:#222;--muted:#6b7280;--accent:#b68a35;--radius:18px;--shadow:0 10px 30px rgba(0,0,0,.12)}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%,#fff 0%,#f1f1f3 50%,#e9ebef 100%);
+       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink)}
+  header{position:sticky;top:0;z-index:20;display:flex;gap:.75rem;align-items:center;
+         padding:.9rem max(4vw,16px);background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(255,255,255,.55));
+         border-bottom:1px solid rgba(0,0,0,.06)}
+  .brand{font-family:"Playfair Display",serif;font-weight:600;letter-spacing:.2px;font-size:clamp(18px,4vw,26px);display:flex;gap:.6rem;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(182,138,53,.15)}
+  main{display:grid;gap:1rem;padding:max(2vh,12px) max(4vw,16px) 110px;min-height:calc(100% - 64px)}
+  .studio{display:grid;gap:1rem;grid-template-columns:1fr}
+  .canvas-wrap{position:relative;width:100%;background:#fff;border-radius:18px;box-shadow:var(--shadow);overflow:hidden;border:1px solid rgba(0,0,0,.06)}
+  canvas{display:block;width:100%;height:auto;background:#f9fafb}
+  .controls{position:sticky;bottom:0;z-index:30;display:flex;flex-wrap:wrap;gap:.8rem 1rem;align-items:center;
+            padding:.9rem max(4vw,16px);background:linear-gradient(180deg,rgba(255,255,255,.4),rgba(255,255,255,.95));
+            border-top:1px solid rgba(0,0,0,.08);box-shadow:0 -10px 30px rgba(0,0,0,.08)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:.75rem 1rem;align-items:center;padding:.9rem 1rem;width:100%}
+  .group{display:flex;align-items:center;gap:.6rem}
+  label{font-size:.9rem;color:var(--muted)}
+  input[type="range"]{width:min(52vw,360px);accent-color:var(--accent)}
+  input[type="number"]{width:88px;padding:.5rem .6rem;border-radius:10px;border:1px solid rgba(0,0,0,.12);background:#fff}
+  .btn{appearance:none;border:none;cursor:pointer;padding:.8rem 1rem;border-radius:14px;font-weight:600;letter-spacing:.2px;
+       background:#111;color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.18);transition:transform .05s ease}
+  .btn:active{transform:translateY(1px) scale(.99)}
+  .btn.secondary{background:linear-gradient(180deg,#fdfdfd,#f4f4f6);color:#111;border:1px solid rgba(0,0,0,.1);box-shadow:0 8px 18px rgba(0,0,0,.08)}
+  .hint{color:var(--muted);font-size:.85rem;padding:0 .2rem .6rem}
+  .aside{display:grid;gap:.8rem;padding:1rem;text-align:center}
+  .tag{display:inline-block;padding:.35rem .6rem;border-radius:999px;border:1px solid rgba(0,0,0,.08);background:#fff;font-size:.8rem;color:var(--muted)}
+  h1{font-family:"Playfair Display",serif;font-weight:600;line-height:1.2;margin:.2rem 0 .6rem;font-size:clamp(22px,5.5vw,38px)}
+  p{color:#4b5563;margin:.2rem auto;max-width:58ch}
+  @media (min-width:980px){.studio{grid-template-columns:3fr 2fr;gap:2rem}.aside{text-align:left;align-content:start;padding:1.25rem 1.5rem}
+    .controls{border-radius:16px;margin:0 max(4vw,16px) 18px} main{padding-bottom:140px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" aria-hidden="true"></div>
+  <div class="brand">Grid Trace Studio</div>
+</header>
+
+<main>
+  <section class="studio">
+    <div class="canvas-wrap"><canvas id="stage"></canvas></div>
+    <aside class="aside">
+      <span class="tag">Hi-Res • True Aspect • Crisp Lines</span>
+      <h1>Turn any photo into a precise tracing grid.</h1>
+      <p>Upload a photo, set square size, offset horizontally & vertically, then download a full-resolution PNG.</p>
+      <p class="hint">Tap the canvas to cycle grid color (auto → light → dark). Every 5th line is bold.</p>
+    </aside>
+  </section>
+</main>
+
+<div class="controls">
+  <div class="toolbar">
+    <input id="file" type="file" accept="image/*" hidden />
+    <button class="btn" id="loadBtn">Load Photo</button>
+
+    <div class="group">
+      <label for="grid">Grid</label>
+      <input id="grid" type="range" min="8" max="240" value="48" step="1" />
+      <input id="gridNum" type="number" min="8" max="240" value="48" />
+      <span class="hint">px</span>
+    </div>
+
+    <div class="group">
+      <label for="offx">Offset X</label>
+      <input id="offx" type="range" min="-500" max="500" value="0" step="1" />
+      <input id="offxNum" type="number" min="-500" max="500" value="0" />
+      <span class="hint">px</span>
+    </div>
+
+    <div class="group">
+      <label for="offy">Offset Y</label>
+      <input id="offy" type="range" min="-500" max="500" value="0" step="1" />
+      <input id="offyNum" type="number" min="-500" max="500" value="0" />
+      <span class="hint">px</span>
+    </div>
+
+    <div class="group">
+      <label for="opacity">Opacity</label>
+      <input id="opacity" type="range" min="10" max="100" value="60" step="1" />
+      <span class="hint">%</span>
+    </div>
+
+    <div class="group">
+      <label for="thickness">Line</label>
+      <input id="thickness" type="range" min="1" max="4" value="1" step="1" />
+      <span class="hint">px</span>
+    </div>
+
+    <button class="btn secondary" id="toggle">Hide Grid</button>
+    <button class="btn" id="downloadBtn">Download PNG</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d', { alpha: true });
+
+  const fileInput = document.getElementById('file');
+  const loadBtn = document.getElementById('loadBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const gridSlider = document.getElementById('grid');
+  const gridNum = document.getElementById('gridNum');
+
+  const offx = document.getElementById('offx');
+  const offxNum = document.getElementById('offxNum');
+  const offy = document.getElementById('offy');
+  const offyNum = document.getElementById('offyNum');
+
+  const opacity = document.getElementById('opacity');
+  const thickness = document.getElementById('thickness');
+  const toggleBtn = document.getElementById('toggle');
+
+  let img = new Image();
+  let hasImage = false;
+  let displayBox = { x:0, y:0, w:0, h:0 };
+  let gridOn = true;
+  let gridColor = 'auto';
+  let avgLum = 0.5;
+
+  /* ---------- HiDPI canvas ---------- */
+  function setHiDPICanvas(cssW, cssH){
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function resizeCanvas(){
+    const wrap = document.querySelector('.canvas-wrap');
+    const maxW = wrap.clientWidth;
+    const maxH = Math.max(260, Math.round(window.innerHeight * 0.5));
+
+    if(hasImage){
+      const ratio = img.width / img.height;
+      let w = maxW, h = Math.round(w / ratio);
+      if(h > maxH){ h = maxH; w = Math.round(h * ratio); }
+      setHiDPICanvas(w, h);
+
+      const scale = Math.min(
+        (canvas.width/(window.devicePixelRatio||1))/img.width,
+        (canvas.height/(window.devicePixelRatio||1))/img.height
+      );
+      const drawW = Math.round(img.width * scale);
+      const drawH = Math.round(img.height * scale);
+      const x = Math.floor((canvas.width/(window.devicePixelRatio||1) - drawW)/2);
+      const y = Math.floor((canvas.height/(window.devicePixelRatio||1) - drawH)/2);
+      displayBox = { x, y, w: drawW, h: drawH };
+    } else {
+      setHiDPICanvas(maxW, maxH);
+      displayBox = { x:0, y:0, w:canvas.width/(window.devicePixelRatio||1), h:canvas.height/(window.devicePixelRatio||1) };
+    }
+    draw();
+  }
+
+  /* ---------- UI events ---------- */
+  loadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', onFile);
+  downloadBtn.addEventListener('click', downloadHiRes);
+
+  const bindPair = (a,b,fn) => {
+    const h = e => { const v = Number(e.target.value); a.value=v; b.value=v; fn(); };
+    a.addEventListener('input', h); b.addEventListener('input', h);
+  };
+  bindPair(gridSlider, gridNum, draw);
+  bindPair(offx, offxNum, draw);
+  bindPair(offy, offyNum, draw);
+
+  opacity.addEventListener('input', draw);
+  thickness.addEventListener('input', draw);
+  toggleBtn.addEventListener('click', () => { gridOn = !gridOn; toggleBtn.textContent = gridOn ? 'Hide Grid' : 'Show Grid'; draw(); });
+  canvas.addEventListener('click', () => { gridColor = gridColor === 'light' ? 'dark' : gridColor === 'dark' ? 'auto' : 'light'; draw(); });
+  window.addEventListener('resize', resizeCanvas, { passive:true });
+
+  /* ---------- Load image ---------- */
+  function onFile(){
+    const file = fileInput.files?.[0];
+    if(!file) return;
+    const fr = new FileReader();
+    fr.onload = e => {
+      img = new Image();
+      img.onload = () => { hasImage = true; avgLum = estimateLuminance(img); resizeCanvas(); };
+      img.src = e.target.result;
+    };
+    fr.readAsDataURL(file);
+  }
+
+  /* ---------- Drawing ---------- */
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    if(hasImage){
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, Math.round(displayBox.x), Math.round(displayBox.y),
+                         Math.round(displayBox.w), Math.round(displayBox.h));
+      if(gridOn){
+        drawGrid(
+          displayBox.x, displayBox.y, displayBox.w, displayBox.h,
+          Number(gridSlider.value),
+          Number(offx.value), Number(offy.value),
+          Number(opacity.value)/100,
+          Number(thickness.value)
+        );
+      }
+    } else {
+      ctx.fillStyle = "#f3f4f6"; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#6b7280"; ctx.font = "600 18px Inter, system-ui"; ctx.textAlign="center";
+      ctx.fillText("Load a photo to begin", canvas.width/2/(window.devicePixelRatio||1), canvas.height/2/(window.devicePixelRatio||1));
+    }
+  }
+
+  /**
+   * Draw a crisp infinite grid clipped to [x..x+w]×[y..y+h].
+   * Lines are at positions offset + k*cell.
+   * Offsets are in CSS pixels (same space as x,y,w,h).
+   */
+  function drawGrid(x, y, w, h, cell, offX, offY, alpha, lineW){
+    let stroke = '#fff';
+    if(gridColor === 'auto'){ stroke = (avgLum > .55) ? '#111' : '#fff'; }
+    else if(gridColor === 'dark'){ stroke = '#111'; }
+
+    const align = v => Math.round(v) + 0.5;
+
+    // Find the first vertical/horizontal line that falls at or before the region
+    const startGX = Math.floor((x - offX) / cell) * cell + offX;
+    const startGY = Math.floor((y - offY) / cell) * cell + offY;
+
+    // Index for bolding every 5th line, consistent with offset
+    let idxX = Math.round((startGX - offX) / cell);
+    let idxY = Math.round((startGY - offY) / cell);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = stroke;
+
+    // Thin lines
+    ctx.lineWidth = lineW;
+    ctx.beginPath();
+    for(let gx = startGX; gx <= x + w + cell; gx += cell){ ctx.moveTo(align(gx), y); ctx.lineTo(align(gx), y + h); }
+    for(let gy = startGY; gy <= y + h + cell; gy += cell){ ctx.moveTo(x, align(gy)); ctx.lineTo(x + w, align(gy)); }
+    ctx.stroke();
+
+    // Bold every 5th line
+    ctx.lineWidth = Math.max(lineW + 1, 2);
+    ctx.beginPath();
+    for(let gx = startGX, i = idxX; gx <= x + w + cell; gx += cell, i++){ if(i % 5 === 0){ ctx.moveTo(align(gx), y); ctx.lineTo(align(gx), y + h); } }
+    for(let gy = startGY, j = idxY; gy <= y + h + cell; gy += cell, j++){ if(j % 5 === 0){ ctx.moveTo(x, align(gy)); ctx.lineTo(x + w, align(gy)); } }
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /* ---------- Hi-res download (with true infinite grid + offsets) ---------- */
+  function downloadHiRes(){
+    if(!hasImage){ alert('Load a photo first.'); return; }
+
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d', { alpha: true });
+    off.width = img.width; off.height = img.height;
+
+    octx.fillStyle = "#ffffff"; octx.fillRect(0,0,off.width,off.height);
+    octx.drawImage(img, 0, 0, off.width, off.height);
+
+    // Convert visible settings to export pixels
+    const visibleCell = Number(gridSlider.value);
+    const scale = img.width / displayBox.w; // export px per visible CSS px
+    const exportCell = Math.max(1, Math.round(visibleCell * scale));
+    const exportLine = Math.max(1, Math.round(Number(thickness.value) * scale/(window.devicePixelRatio||1)));
+    const exportOffX = Math.round(Number(offx.value) * scale);
+    const exportOffY = Math.round(Number(offy.value) * scale);
+    const alpha = Number(opacity.value)/100;
+
+    let stroke = '#fff';
+    if(gridColor === 'auto'){ stroke = (avgLum > .55) ? '#111' : '#fff'; }
+    else if(gridColor === 'dark'){ stroke = '#111'; }
+
+    const align = v => Math.round(v) + 0.5;
+
+    // Infinite grid math in export space
+    const startGX = Math.floor((0 - exportOffX) / exportCell) * exportCell + exportOffX;
+    const startGY = Math.floor((0 - exportOffY) / exportCell) * exportCell + exportOffY;
+    let idxX = Math.round((startGX - exportOffX) / exportCell);
+    let idxY = Math.round((startGY - exportOffY) / exportCell);
+
+    octx.save();
+    octx.globalAlpha = alpha;
+    octx.strokeStyle = stroke;
+
+    // Thin lines
+    octx.lineWidth = exportLine;
+    octx.beginPath();
+    for(let gx = startGX; gx <= off.width + exportCell; gx += exportCell){ octx.moveTo(align(gx), 0); octx.lineTo(align(gx), off.height); }
+    for(let gy = startGY; gy <= off.height + exportCell; gy += exportCell){ octx.moveTo(0, align(gy)); octx.lineTo(off.width, align(gy)); }
+    octx.stroke();
+
+    // Bold every 5th
+    octx.lineWidth = Math.max(exportLine + 1, 2);
+    octx.beginPath();
+    for(let gx = startGX, i = idxX; gx <= off.width + exportCell; gx += exportCell, i++){ if(i % 5 === 0){ octx.moveTo(align(gx), 0); octx.lineTo(align(gx), off.height); } }
+    for(let gy = startGY, j = idxY; gy <= off.height + exportCell; gy += exportCell, j++){ if(j % 5 === 0){ octx.moveTo(0, align(gy)); octx.lineTo(off.width, align(gy)); } }
+    octx.stroke();
+
+    octx.restore();
+
+    const link = document.createElement('a');
+    link.download = 'grid-trace.png';
+    link.href = off.toDataURL('image/png');
+    link.click();
+  }
+
+  function estimateLuminance(image){
+    const t = document.createElement('canvas'); const c = t.getContext('2d');
+    t.width = 40; t.height = 40; c.drawImage(image,0,0,40,40);
+    const d = c.getImageData(0,0,40,40).data; let s = 0;
+    for(let i=0;i<d.length;i+=4){ s += (0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255; }
+    return s/(d.length/4);
+  }
+
+  // init
+  setHiDPICanvas(1200, 720);
+  resizeCanvas();
+})();
+</script>
+</body>
+</html>
